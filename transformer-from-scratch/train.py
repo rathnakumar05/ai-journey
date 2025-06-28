@@ -16,8 +16,8 @@ def get_config():
         "num_epochs": 20,
         "head": 2,
         "lr": 10**-4,
-        "seq_len": 234,
-        "d_model": 88,
+        "seq_len": 1024,
+        "d_model": 512,
         "datasource": 'en_ta',
         "input_lang": "en",
         "output_lang": "ta",
@@ -26,9 +26,9 @@ def get_config():
         "preload": "latest",
         "tokenizer_file": "tokenizer_{0}.json",
         "experiment_name": "runs/tmodel",
-        "train_ds": "./en-ta-ds/train.csv",
-        "test_ds": "./en-ta-ds/test.csv",
-        "val_ds": "./en-ta-ds/val.csv",
+        "train_ds": "./en-ta-ds/train.csv", #optional
+        "test_ds": "./en-ta-ds/test.csv", #optional
+        "val_ds": "./en-ta-ds/val.csv", #optional
     }
 
 def get_weights_file_path(config, epoch: str):
@@ -46,7 +46,7 @@ def latest_weights_file_path(config):
     return str(weights_files[-1])
 
 def get_tokenizer():
-    base_tokenizer = tiktoken.get_encoding('gpt2')
+    base_tokenizer = tiktoken.get_encoding('o200k_base')
     custom_tokens = ["<|startoftext|>", "<|padding|>"]
     custom_token_ids = {
         token: base_tokenizer.n_vocab + i for i, token in enumerate(custom_tokens)
@@ -138,9 +138,14 @@ class BilingualDataset(Dataset):
         }
     
 def get_ds(config, tokenizer, special_tokens_set):
-    train_dataset = pd.read_csv(config["train_ds"])[['en', 'ta']].to_dict(orient="records")
-    valid_dataset = pd.read_csv(config["val_ds"])[['en', 'ta']].to_dict(orient="records")
-    test_dataset = pd.read_csv(config["test_ds"])[['en', 'ta']].to_dict(orient="records")
+    #local dataset
+    # train_dataset = pd.read_csv(config["train_ds"])[['en', 'ta']].to_dict(orient="records")
+    # valid_dataset = pd.read_csv(config["val_ds"])[['en', 'ta']].to_dict(orient="records")
+    # test_dataset = pd.read_csv(config["test_ds"])[['en', 'ta']].to_dict(orient="records")
+
+    train_dataset = load_dataset("Hemanth-thunder/en_ta", split="train")
+    valid_dataset = load_dataset("Hemanth-thunder/en_ta", split="validation")
+    test_dataset = load_dataset("Hemanth-thunder/en_ta", split="test")
 
 
     train_dataset = BilingualDataset(train_dataset, tokenizer, special_tokens_set, config["input_lang"], config["output_lang"], config["seq_len"])
@@ -155,7 +160,7 @@ def get_ds(config, tokenizer, special_tokens_set):
 
 
 def get_model(config, tokenizer):
-    return build_transformer(tokenizer.n_vocab, config['seq_len'], config["d_model"], 4, 8)
+    return build_transformer(tokenizer.n_vocab, config['seq_len'], config["d_model"], 4, 4)
 
 def train_model(config):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
